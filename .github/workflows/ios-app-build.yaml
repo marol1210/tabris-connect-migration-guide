@@ -56,6 +56,23 @@ jobs:
         run: |
           tabris build ios production --device --verbose
 
+      - name: Prepare artifacts for archival
+        run: |
+          mkdir -p artifacts
+          printenv | grep GITHUB_ > artifacts/env-gha
+          cp -R \
+            "$(find . -iname "*.app.dSYM")" \
+            "$(find . -iname "*.ipa")" \
+            artifacts
+          tar cf artifacts.tar artifacts
+
+      - name: Archive metadata
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts.tar
+          path: artifacts.tar
+          retention-days: 30
+
       - name: Cleanup
         if: always()
         run: |
