@@ -1,54 +1,351 @@
-# Migration Guide
+# Tabris Connect to Github Actions migration guide
 
-## Run
 
-If you haven't done so already, install the [Tabris CLI](https://www.npmjs.com/package/tabris-cli) on your machine:
+
+## Prerequisites:
+
+- Github repository with source code of the application that is built on Tabris Connect
+	
+	> Building applications which source code is hosted elsewhere is possible but out out of the scope of this guide.
+
+- Apple certificate (development or distribution) with corresponding iOS provisioning profile
+  - `*.p12` file (incl passphrase if certificate was encrypted)
+  - `*.mobileprovision` file
+- Github workflows [documentation](https://docs.github.com/en/actions/using-workflows) in case if customization of the build job is needed.
+
+## Development build
+
+1. Please read "[Create secrets for your certificate and provisioning profile](https://docs.github.com/en/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development)" section of "Installing an Apple certificate on macOS runners for Xcode development" guide first.
+
+   > The signing process involves storing certificates and provisioning  profiles, transferring them to the runner, importing them to the  runner's keychain, and using them in your build.
+   >
+   > To use your certificate and provisioning profile on a runner, we  strongly recommend that you use GitHub secrets. For more information on  creating secrets and using them in a workflow, see "[Encrypted secrets](https://docs.github.com/en/actions/reference/encrypted-secrets)."
+   >
+   > Create secrets in your repository or organization for the following items:
+   >
+   > - Your Apple signing certificate.
+   >
+   >   - This is your `p12` certificate file. For more information on exporting your signing certificate from Xcode, see the [Xcode documentation](https://help.apple.com/xcode/mac/current/#/dev154b28f09).
+   >
+   >   - You should convert your certificate to Base64 when saving it as a secret. In this example, the secret is named `BUILD_CERTIFICATE_BASE64`.
+   >
+   >   - Use the following command to convert your certificate to Base64 and copy it to your clipboard:
+   >
+   >     ```shell
+   >     base64 BUILD_CERTIFICATE.p12 | pbcopy
+   >     ```
+   >
+   > - The password for your Apple signing certificate.
+   >
+   >   - In this example, the secret is named `P12_PASSWORD`.
+   >
+   > - Your Apple provisioning profile.
+   >
+   >   - For more information on exporting your provisioning profile from Xcode, see the [Xcode documentation](https://help.apple.com/xcode/mac/current/#/deva899b4fe5).
+   >
+   >   - You should convert your provisioning profile to Base64 when saving it as a secret. In this example, the secret is named `BUILD_PROVISION_PROFILE_BASE64`.
+   >
+   >   - Use the following command to convert your provisioning profile to Base64 and copy it to your clipboard:
+   >
+   >     ```shell
+   >     base64 PROVISIONING_PROFILE.mobileprovision | pbcopy
+   >     ```
+   >
+   > - A keychain password.
+   >
+   >   - A new keychain will be created on the runner, so the password for  the new keychain can be any new random string. In this example, the  secret is named `KEYCHAIN_PASSWORD`.
+
+2. Follow steps below to complete the tasks described above:
+
+   - Open Environments Settings page in your repository:
+     ```
+     https://github.com/your-org/your-repository/settings/environments
+     ```
+
+   - Create a new environment named: `iOS app signing`, and add secrets:
+
+   - Base64 encoded **development** Apple signing certificate with name: `BUILD_CERTIFICATE_BASE64`
+
+   - Base64 encoded **distribution** Apple signing certificate with name: `RELEASE_BUILD_CERTIFICATE_BASE64`
+
+   - Passphrase used for encrypting the certificates, we used the same one for both. Do not base64 encode. Use name: `P12_PASSWORD`
+   - Base64 encoded **development** provisioning profile. Use name: `BUILD_PROVISION_PROFILE_BASE64`.
+   - Base64 encoded **distribution** provisioning profile. Use name: `RELEASE_BUILD_PROVISION_PROFILE_BASE64`.
+   - Any new random string that will be used as keychain password, use name: `KEYCHAIN_PASSWORD`
+
+3. Get your Tabris.js Build Key. Go to [Tabris Account Settings Page](https://build.tabris.com/settings/account) and copy build key visible below your username. Following steps in: [Creating encrypted secrets for a repository](Creating encrypted secrets for a repository), define a new repository secret called `TABRIS_BUILD_KEY`, as a secret paste in the build key you copied.
+
+4. If your Tabris Connect build job had any secret environment variables configured, define them as repository secrets same as `TABRIS_BUILD_KEY`.
+
+5. Create build configuration file. In `./cordova` directory in your repo create `build.json` file.
+
+6. Copy following contents into newly created file, use yours provisioning profile identifiers:
+
+   > Note: if you do not plan to build both: debug and release apps, you can define only one signing configuration.
+
+   ```json
+   {
+     "ios": {
+       "debug": {
+         "codeSignIdentity": "Apple Development",
+         "packageType": "development",
+         "provisioningProfile": "a82715ba-56f9-4ef1-ac01-b91040293a1c"
+       },
+       "release": {
+         "codeSignIdentity": "Apple Distribution",
+         "packageType": "app-store",
+         "provisioningProfile": "c47b89fb-bec9-4682-861e-f88b0597b63a"
+       }
+     }
+   }
+   
+   ```
+
+7. In root directory of the repository with source code of the application create following directories hierarchy `.github/workflows`.
+
+   ```shell
+   mkdir -p .github/workflows
+   ```
+
+8. Create a new file called `ios-app-build.yaml` inside of the newly created directory.
+
+   ```shell
+   touch .github/workflows/ios-app-build.yaml
+   ```
+
+9. Copy following YAML contents into the created file
+   ```yaml
+   name: Build iOS app
+   
+   on:
+     push:
+   
+   jobs:
+     build-ios:
+       runs-on: macos-latest
+       name: Build iOS application
+       environment: 'iOS app signing'
+       steps:
+   
+         - name: Install the Apple certificate and provisioning profile
+           env:
+             BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+             P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+             BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+             KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+           run: |
+             # create variables
+             CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+             PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+   
+             # import certificate and provisioning profile from secrets
+             echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode --output $CERTIFICATE_PATH
+             echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode --output $PP_PATH
+   
+             # create temporary keychain
+             security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+   
+             # import certificate to keychain
+             security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+             security list-keychain -d user -s $KEYCHAIN_PATH
+   
+             # apply provisioning profile
+             mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+             cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+   
+         - name: Checkout
+           uses: actions/checkout@v3
+           with:
+             fetch-depth: 1
+   
+         - name: Install tabris-cli
+           run: npm install -g tabris-cli
+           
+         - name: Install application dependencies
+           run: npm install
+   
+         - name: Build application
+           env:
+             TABRIS_BUILD_KEY: ${{ secrets.TABRIS_IOS_BUILD_KEY }}
+           run: |
+             tabris build ios --debug --device --verbose
+   
+         - name: Prepare artifacts for archival
+           run: |
+             mkdir -p artifacts
+             printenv | grep GITHUB_ > artifacts/env-gha
+             cp -R \
+               "$(find . -iname "*.app.dSYM")" \
+               "$(find . -iname "*.ipa")" \
+               artifacts
+             tar cf artifacts.tar artifacts
+   
+         - name: Archive metadata
+           uses: actions/upload-artifact@v3
+           with:
+             name: artifacts.tar
+             path: artifacts.tar
+             retention-days: 30
+   
+         - name: Cleanup
+           if: always()
+           run: |
+             security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+             rm ~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision
+   ```
+
+10. Commit changes and push to Github. Build should start automatically and you can observe its progress here:
+
+    ```
+    https://github.com/your-org/your-repository/actions
+    ```
+
+
+
+## Release build
+
+To build an app for release:
+
+- in line 15, replace:
+  ```
+  BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+  ```
+
+  with:
+
+  ```
+  BUILD_CERTIFICATE_BASE64: ${{ secrets.RELEASE_BUILD_CERTIFICATE_BASE64 }}
+  ```
+
+- in line 17, replace:
+
+  ```
+  BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+  ```
+
+  with:
+
+  ```
+  BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+  ```
+
+  in line 57, replace:
+
+- ```
+  tabris build ios --debug --device --verbose
+  ```
+
+  with:
+
+  ```
+  tabris build ios --release --device --verbose
+  ```
+
+Commit changes and push to Github. Build should start automatically. Observe progress at:
 
 ```
-npm i tabris-cli -g
+https://github.com/your-org/your-repository/actions
 ```
 
-Then in the project directory, type:
 
+
+## Parameterized build
+
+You can have a parameterized job that can produce development or distrubition build, depending on input variable. This workflow has to be triggered manually on Github. Use following build configuration:
+
+```yaml
+name: Build iOS app
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '`debug` or `release`'
+        required: true
+        default: 'debug'
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    name: Build iOS application
+    environment: 'iOS app signing'
+    steps:
+
+      - name: Install the Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ github.event.inputs.build_type == 'release' && secrets.RELEASE_BUILD_CERTIFICATE_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{  github.event.inputs.build_type == 'release' && secrets.RELEASE_BUILD_PROVISION_PROFILE_BASE64 || secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # import certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode --output $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode --output $PP_PATH
+
+          # create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # apply provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Install tabris-cli
+        run: npm install -g tabris-cli
+        
+      - name: Install application dependencies
+        run: npm install
+
+      - name: Build application
+        env:
+          TABRIS_BUILD_KEY: ${{ secrets.TABRIS_IOS_BUILD_KEY }}
+        run: |
+          tabris build ios --${{ github.event.inputs.build_type }} --device --verbose
+
+      - name: Prepare artifacts for archival
+        run: |
+          mkdir -p artifacts
+          printenv | grep GITHUB_ > artifacts/env-gha
+          cp -R \
+            "$(find . -iname "*.app.dSYM")" \
+            "$(find . -iname "*.ipa")" \
+            artifacts
+          tar cf artifacts.tar artifacts
+
+      - name: Archive metadata
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts.tar
+          path: artifacts.tar
+          retention-days: 30
+
+      - name: Cleanup
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+          rm ~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision
 ```
-npm start
-```
-Or choose "npm: start" from the Visual Studio Code task runner to make compile errors appear in the "Problems" view.
 
-This will start a Tabris.js code server at a free port and print its URL to the console. The app code can then be [side-loaded](https://docs.tabris.com/3.9/developer-app.html#run-your-app) in the [developer app](https://docs.tabris.com/3.9/developer-app.html) by entering that URL.
+Push changes to Github.
 
-Alternatively you can also call the Tabris CLI directly:
+This workflow has to be triggered manually on Github. Go to "Actions" tab, select "Build iOS app" workflow in the left side sidebar. In the main part of the view, just below table header there should be an information about available `workflow_dispatch` trigger. Right to that message "Run workflow" button can be used for triggering a build.
 
-```
-tabris serve -a -w
-```
-
-This the same as running `npm start`. The `-w` switch starts the compiler in watch mode, meaning you do not have to re-start the server after each code change, and `-a` causes the app to reload automatically as well.
-
-## Test
-
-This project includes a ESLint configuration that helps preventing common mistakes in your code. Most IDEs can display ESLint-based hints directly in the editor, but you can also run the tool explicitly via:
-
-```
-npm test
-```
-
-This will also check for compile errors.
-
-The initial rules defined in `.eslintrc` are supposed to warn against problematic patterns, but not enforce a strict code style. You may want to [adjust them](https://eslint.org/docs/rules/) according to your taste. TypeScript specific rules are documented [here](https://github.com/typescript-eslint/typescript-eslint/tree/master/packages/eslint-plugin) and JSX-Syntax specific rules [here](https://github.com/yannickcr/eslint-plugin-react). These can only be used in the dedicated `override` section of `.eslintrc`.
-
-## Debugging
-
-
-### Android
-
-To debug your application running on an Android device, first click the debug icon on the Visual Studio Code activity bar. This opens the debug side bar where you can launch the configuration "Debug Tabris on Android" and enter the device's IP address. More information can be found [here](https://docs.tabris.com/3.9/debug.html#android).
-
-### iOS
-
-On iOS, the Safari developer tools [can be used for debugging](https://docs.tabris.com/3.9/debug.html#ios).
-## Build
-
-The app can be built using the online build service at [tabrisjs.com](https://tabrisjs.com) or locally using [Tabris.js CLI](https://www.npmjs.com/package/tabris-cli).
-
-See [Building a Tabris.js App](https://docs.tabris.com/3.9/build.html) for more information.
+![workflow_dispatch](./workflow_dispatch.png)
