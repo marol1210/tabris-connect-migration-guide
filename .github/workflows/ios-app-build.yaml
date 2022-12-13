@@ -54,7 +54,7 @@ jobs:
         env:
           TABRIS_BUILD_KEY: ${{ secrets.TABRIS_IOS_BUILD_KEY }}
         run: |
-          tabris build ios production --device --verbose
+          tabris build ios --debug --device --verbose
 
       - name: Prepare artifacts for archival
         run: |
