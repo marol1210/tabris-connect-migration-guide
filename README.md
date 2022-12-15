@@ -4,9 +4,9 @@
 
 ## Prerequisites:
 
-- Github repository with source code of the application that is built on Tabris Connect
+- Github repository with source code of the application that is built on Tabris Connect. You need an admin rights in order to configure secrets consumed by the build job.
 	
-	> Building applications which source code is hosted elsewhere is possible but out out of the scope of this guide.
+	> Building applications which source code is hosted elsewhere is possible but out of the scope of this guide.
 
 - Apple certificate (development or distribution) with corresponding iOS provisioning profile
   - `*.p12` file (incl passphrase if certificate was encrypted)
@@ -71,15 +71,16 @@
    - Passphrase used for encrypting the certificates, we used the same one for both. Do not base64 encode. Use name: `P12_PASSWORD`
    - Base64 encoded **development** provisioning profile. Use name: `BUILD_PROVISION_PROFILE_BASE64`.
    - Base64 encoded **distribution** provisioning profile. Use name: `RELEASE_BUILD_PROVISION_PROFILE_BASE64`.
-   - Any new random string that will be used as keychain password, use name: `KEYCHAIN_PASSWORD`
+   - Any new random string that will be used as keychain password, use name: `KEYCHAIN_PASSWORD`. We used 32 character alphanumeric string generated with following command: ```pwgen 32 1```
 
-3. Get your Tabris.js Build Key. Go to [Tabris Account Settings Page](https://build.tabris.com/settings/account) and copy build key visible below your username. Following steps in: [Creating encrypted secrets for a repository](Creating encrypted secrets for a repository), define a new repository secret called `TABRIS_BUILD_KEY`, as a secret paste in the build key you copied.
+3. **Get your Tabris.js Build Key. Go to [Tabris Account Settings Page](https://build.tabris.com/settings/account) and copy build key visible below your username. Following steps in: [Creating encrypted secrets for a repository](Creating encrypted secrets for a repository), define a new repository secret called `TABRIS_BUILD_KEY`, as a secret paste in the build key you copied.**
 
 4. If your Tabris Connect build job had any secret environment variables configured, define them as repository secrets same as `TABRIS_BUILD_KEY`.
 
-5. Create build configuration file. In `./cordova` directory in your repo create `build.json` file.
+5. Create signing configuration file. In `./cordova` directory in your repo create `build.json` file.
 
-6. Copy following contents into newly created file, use yours provisioning profile identifiers:
+6. Copy following contents into newly created file. Use yours provisioning profile identifiers.
+   Open your provisioning profile with any plain text editor, search for `UUID` key and use corresponding string value below the key.
 
    > Note: if you do not plan to build both: debug and release apps, you can define only one signing configuration.
 
@@ -98,10 +99,9 @@
        }
      }
    }
-   
    ```
 
-7. In root directory of the repository with source code of the application create following directories hierarchy `.github/workflows`.
+7. In root directory of the repository with source code of the application, create following directories hierarchy `.github/workflows`.
 
    ```shell
    mkdir -p .github/workflows
@@ -205,59 +205,12 @@
 
 
 
-## Release build
+## Parameterized build (release or debug)
 
-To build an app for release:
-
-- in line 15, replace:
-  ```
-  BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-  ```
-
-  with:
-
-  ```
-  BUILD_CERTIFICATE_BASE64: ${{ secrets.RELEASE_BUILD_CERTIFICATE_BASE64 }}
-  ```
-
-- in line 17, replace:
-
-  ```
-  BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-  ```
-
-  with:
-
-  ```
-  BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-  ```
-
-  in line 57, replace:
-
-- ```
-  tabris build ios --debug --device --verbose
-  ```
-
-  with:
-
-  ```
-  tabris build ios --release --device --verbose
-  ```
-
-Commit changes and push to Github. Build should start automatically. Observe progress at:
-
-```
-https://github.com/your-org/your-repository/actions
-```
-
-
-
-## Parameterized build
-
-You can have a parameterized job that can produce development or distrubition build, depending on input variable. This workflow has to be triggered manually on Github. Use following build configuration:
+You can have a parameterized job that can produce development or distrubition build, depending on input variable. This workflow has to be triggered manually on Github. Create another yaml file, named `ios-app-build-manual.yaml`. It will never be executed automatically, but you can trigger it from withing Githubs web UI manually. Use following build configuration:
 
 ```yaml
-name: Build iOS app
+name: Manual iOS app build
 
 on:
   workflow_dispatch:
