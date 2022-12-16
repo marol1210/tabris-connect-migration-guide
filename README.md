@@ -165,7 +165,9 @@
            run: npm install -g tabris-cli
            
          - name: Install application dependencies
-           run: npm install
+           run: |
+           	npm run --if-present prepare
+           	npm install
    
          - name: Build application
            env:
@@ -196,7 +198,7 @@
              security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
              rm ~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision
    ```
-
+   
 10. Commit changes and push to Github. Build should start automatically and you can observe its progress here:
 
     ```
@@ -265,7 +267,9 @@ jobs:
         run: npm install -g tabris-cli
         
       - name: Install application dependencies
-        run: npm install
+        run: |
+        	npm run --if-present prepare
+        	npm install
 
       - name: Build application
         env:
