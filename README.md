@@ -11,9 +11,11 @@
 - Apple certificate (development or distribution) with corresponding iOS provisioning profile
   - `*.p12` file (incl passphrase if certificate was encrypted)
   - `*.mobileprovision` file
+- Android signing key and its alias/passwords
 - Github workflows [documentation](https://docs.github.com/en/actions/using-workflows) in case if customization of the build job is needed.
 
-## Development build
+### iOS
+#### Development build
 
 1. Please read "[Create secrets for your certificate and provisioning profile](https://docs.github.com/en/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development)" section of "Installing an Apple certificate on macOS runners for Xcode development" guide first.
 
@@ -306,3 +308,76 @@ Push changes to Github.
 This workflow has to be triggered manually on Github. Go to "Actions" tab, select "Build iOS app" workflow in the left side sidebar. In the main part of the view, just below table header there should be an information about available `workflow_dispatch` trigger. Right to that message "Run workflow" button can be used for triggering a build.
 
 ![workflow_dispatch](./workflow_dispatch.png)
+
+### Android
+
+1. Provide signing key and its alias/passwords in the github project settings under `Security -> Actions`.
+
+    The following keys need to be used:
+
+      * `ANDROID_APP_BUNDLE_KEYSTORE_PASSWORD`
+      * `ANDROID_APP_BUNDLE_KEY_ALIAS`
+      * `ANDROID_APP_BUNDLE_KEY_PASSWORD`
+      * `ANDROID_APP_BUNDLE_SIGNING_KEY` (base64 encoded)
+
+    Note that the `ANDROID_APP_BUNDLE_SIGNING_KEY` has to be base64 encoded.
+
+2. Create a new file called `android-app-build.yaml` inside of the `.github/workflows/` directors.
+
+   ```shell
+   touch .github/workflows/android-app-build.yaml
+   ```
+
+3. Insert the following script into the yaml file.
+
+    ```yml
+    name: Build Tabris.js app for Android
+
+    on:
+      push:
+        branches:
+          - main
+
+    jobs:
+      build_android_app:
+
+        runs-on: ubuntu-latest
+
+        steps:
+          - name: Checkout source
+            uses: actions/checkout@v3.1.0
+
+          - name: Install tabris-cli
+            run: npm install -g tabris-cli
+
+          - name: Setup java
+            uses: actions/setup-java@v3.6.0
+            with:
+              distribution: adopt
+              java-version: 11
+
+          - name: Setup gradle
+            uses: gradle/gradle-build-action@v2.3.3
+
+          - name: Execute build
+            run: tabris build --release android -- --packageType=bundle
+
+          - name: Sign release app bundle
+            uses: r0adkll/sign-android-release@v1.0.4
+            id: sign_app
+            with:
+              releaseDirectory: app/build/outputs/bundle/prodRelease
+              signingKeyBase64: ${{ secrets.ANDROID_APP_BUNDLE_SIGNING_KEY }}
+              keyStorePassword: ${{ secrets.ANDROID_APP_BUNDLE_KEYSTORE_PASSWORD }}
+              alias: ${{ secrets.ANDROID_APP_BUNDLE_KEY_ALIAS }}
+              keyPassword: ${{ secrets.ANDROID_APP_BUNDLE_KEY_PASSWORD }}
+
+          - name: Store signed app bundle
+            uses: actions/upload-artifact@v3.1.1
+            with:
+              name: signed-app-bundle
+              path: ${{ steps.sign_app.outputs.signedReleaseFile }}
+              retention-days: 7
+    ```
+
+4. Push changes to Github and observe the app build.
