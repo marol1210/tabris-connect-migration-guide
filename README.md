@@ -360,7 +360,10 @@ This workflow has to be triggered manually on Github. Go to "Actions" tab, selec
             uses: gradle/gradle-build-action@v2.3.3
 
           - name: Execute build
-            run: tabris build --release android -- --packageType=bundle
+            env:
+              TABRIS_BUILD_KEY: ${{ secrets.TABRIS_IOS_BUILD_KEY }}
+            run: |
+              tabris build --release android -- --packageType=bundle
 
           - name: Sign release app bundle
             uses: r0adkll/sign-android-release@v1.0.4
