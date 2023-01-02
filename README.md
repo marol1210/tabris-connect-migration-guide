@@ -348,9 +348,6 @@ This workflow has to be triggered manually on Github. Go to "Actions" tab, selec
           - name: Checkout source
             uses: actions/checkout@v3.1.0
 
-          - name: Install tabris-cli
-            run: npm install -g tabris-cli
-
           - name: Setup java
             uses: actions/setup-java@v3.6.0
             with:
@@ -359,6 +356,14 @@ This workflow has to be triggered manually on Github. Go to "Actions" tab, selec
 
           - name: Setup gradle
             uses: gradle/gradle-build-action@v2.3.3
+
+          - name: Install tabris-cli
+            run: npm install -g tabris-cli
+
+          - name: Install application dependencies
+            run: |
+              npm run --if-present prepare
+              npm install            
 
           - name: Execute build
             env:
