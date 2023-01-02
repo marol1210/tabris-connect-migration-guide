@@ -319,6 +319,7 @@ This workflow has to be triggered manually on Github. Go to "Actions" tab, selec
       * `ANDROID_APP_BUNDLE_KEY_ALIAS`
       * `ANDROID_APP_BUNDLE_KEY_PASSWORD`
       * `ANDROID_APP_BUNDLE_SIGNING_KEY` (base64 encoded)
+      * `TABRIS_BUILD_KEY` (already created during the iOS setup step)
 
     Note that the `ANDROID_APP_BUNDLE_SIGNING_KEY` has to be base64 encoded.
 
@@ -369,7 +370,7 @@ This workflow has to be triggered manually on Github. Go to "Actions" tab, selec
             uses: r0adkll/sign-android-release@v1.0.4
             id: sign_app
             with:
-              releaseDirectory: app/build/outputs/bundle/prodRelease
+              releaseDirectory: app/build/outputs/bundle/release
               signingKeyBase64: ${{ secrets.ANDROID_APP_BUNDLE_SIGNING_KEY }}
               keyStorePassword: ${{ secrets.ANDROID_APP_BUNDLE_KEYSTORE_PASSWORD }}
               alias: ${{ secrets.ANDROID_APP_BUNDLE_KEY_ALIAS }}
