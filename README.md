@@ -59,12 +59,12 @@
 
 2. Follow steps below to complete the tasks described above:
 
-   - Open Environments Settings page in your repository:
+   - Open Actions Secrets Settings page of your repository:
      ```
-     https://github.com/your-org/your-repository/settings/environments
+     https://github.com/your-org/your-repository/settings/secrets/actions
      ```
 
-   - Create a new environment named: `iOS app signing`, and add secrets:
+   - Add following repository secrets:
 
    - Base64 encoded **development** Apple signing certificate with name: `BUILD_CERTIFICATE_BASE64`
 
@@ -126,7 +126,6 @@
      build-ios:
        runs-on: macos-latest
        name: Build iOS application
-       environment: 'iOS app signing'
        steps:
    
          - name: Install the Apple certificate and provisioning profile
@@ -228,7 +227,6 @@ jobs:
   build-ios:
     runs-on: macos-latest
     name: Build iOS application
-    environment: 'iOS app signing'
     steps:
 
       - name: Install the Apple certificate and provisioning profile

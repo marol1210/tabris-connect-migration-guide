@@ -12,7 +12,6 @@ jobs:
   build-ios:
     runs-on: macos-latest
     name: Build iOS application
-    environment: 'iOS app signing'
     steps:
 
       - name: Install the Apple certificate and provisioning profile
