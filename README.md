@@ -29,7 +29,7 @@
    >
    >   - This is your `p12` certificate file. For more information on exporting your signing certificate from Xcode, see the [Xcode documentation](https://help.apple.com/xcode/mac/current/#/dev154b28f09).
    >
-   >   - You should convert your certificate to Base64 when saving it as a secret. In this example, the secret is named `BUILD_CERTIFICATE_BASE64`.
+   >   - You should convert your certificate to Base64 when saving it as a secret. In this example, the secret is named `IOS_DEVELOPMENT_BUILD_CERTIFICATE_BASE64`.
    >
    >   - Use the following command to convert your certificate to Base64 and copy it to your clipboard:
    >
@@ -39,13 +39,13 @@
    >
    > - The password for your Apple signing certificate.
    >
-   >   - In this example, the secret is named `P12_PASSWORD`.
+   >   - In this example, the secret is named `IOS_P12_PASSWORD`.
    >
    > - Your Apple provisioning profile.
    >
    >   - For more information on exporting your provisioning profile from Xcode, see the [Xcode documentation](https://help.apple.com/xcode/mac/current/#/deva899b4fe5).
    >
-   >   - You should convert your provisioning profile to Base64 when saving it as a secret. In this example, the secret is named `BUILD_PROVISION_PROFILE_BASE64`.
+   >   - You should convert your provisioning profile to Base64 when saving it as a secret. In this example, the secret is named `IOS_DEVELOPMENT_BUILD_PROVISION_PROFILE_BASE64`.
    >
    >   - Use the following command to convert your provisioning profile to Base64 and copy it to your clipboard:
    >
@@ -66,14 +66,14 @@
 
    - Add following repository secrets:
 
-   - Base64 encoded **development** Apple signing certificate with name: `BUILD_CERTIFICATE_BASE64`
+   - Base64 encoded **development** Apple signing certificate with name: `IOS_DEVELOPMENT_BUILD_CERTIFICATE_BASE64`
 
-   - Base64 encoded **distribution** Apple signing certificate with name: `RELEASE_BUILD_CERTIFICATE_BASE64`
+   - Base64 encoded **distribution** Apple signing certificate with name: `IOS_RELEASE_BUILD_CERTIFICATE_BASE64`
 
-   - Passphrase used for encrypting the certificates, we used the same one for both. Do not base64 encode. Use name: `P12_PASSWORD`
-   - Base64 encoded **development** provisioning profile. Use name: `BUILD_PROVISION_PROFILE_BASE64`.
-   - Base64 encoded **distribution** provisioning profile. Use name: `RELEASE_BUILD_PROVISION_PROFILE_BASE64`.
-   - Any new random string that will be used as keychain password, use name: `KEYCHAIN_PASSWORD`. We used 32 character alphanumeric string generated with following command: ```pwgen 32 1```
+   - Passphrase used for encrypting the certificates, we used the same one for both. Do not base64 encode. Use name: `IOS_P12_PASSWORD`
+   - Base64 encoded **development** provisioning profile. Use name: `IOS_DEVELOPMENT_BUILD_PROVISION_PROFILE_BASE64`.
+   - Base64 encoded **distribution** provisioning profile. Use name: `IOS_RELEASE_BUILD_PROVISION_PROFILE_BASE64`.
+   - Any new random string that will be used as keychain password, use name: `IOS_KEYCHAIN_PASSWORD`. We used 32 character alphanumeric string generated with following command: ```pwgen 32 1```
 
 3. **Get your Tabris.js Build Key. Go to [Tabris Account Settings Page](https://build.tabris.com/settings/account) and copy build key visible below your username. Following steps in: [Creating encrypted secrets for a repository](Creating encrypted secrets for a repository), define a new repository secret called `TABRIS_BUILD_KEY`, as a secret paste in the build key you copied.**
 
@@ -130,10 +130,10 @@
    
          - name: Install the Apple certificate and provisioning profile
            env:
-             BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-             P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-             BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-             KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+             BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_DEVELOPMENT_BUILD_CERTIFICATE_BASE64 }}
+             P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+             BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_DEVELOPMENT_BUILD_PROVISION_PROFILE_BASE64 }}
+             KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
            run: |
              # create variables
              CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
@@ -231,7 +231,7 @@ jobs:
 
       - name: Install the Apple certificate and provisioning profile
         env:
-          BUILD_CERTIFICATE_BASE64: ${{ github.event.inputs.build_type == 'release' && secrets.RELEASE_BUILD_CERTIFICATE_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
+          BUILD_CERTIFICATE_BASE64: ${{ github.event.inputs.build_type == 'release' && secrets.IOS_RELEASE_BUILD_CERTIFICATE_BASE64 || secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
           BUILD_PROVISION_PROFILE_BASE64: ${{  github.event.inputs.build_type == 'release' && secrets.RELEASE_BUILD_PROVISION_PROFILE_BASE64 || secrets.BUILD_PROVISION_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
