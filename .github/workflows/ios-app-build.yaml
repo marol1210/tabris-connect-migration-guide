@@ -56,7 +56,7 @@ jobs:
 
       - name: Build application
         env:
-          TABRIS_BUILD_KEY: ${{ secrets.TABRIS_IOS_BUILD_KEY }}
+          TABRIS_BUILD_KEY: ${{ secrets.TABRIS_BUILD_KEY }}
         run: |
           tabris build ios --${{ github.event.inputs.build_type }} --device --verbose
 
