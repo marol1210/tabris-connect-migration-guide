@@ -319,7 +319,7 @@ This workflow has to be triggered manually on Github. Go to "Actions" tab, selec
       * `ANDROID_APP_BUNDLE_SIGNING_KEY` (base64 encoded)
       * `TABRIS_BUILD_KEY` (already created during the iOS setup step)
 
-    Note that the `ANDROID_APP_BUNDLE_SIGNING_KEY` has to be in Java keystore format (*.jks) and base64 encoded. When a new key is created it is advisable to follow the  [Android key generation documentation](https://developer.android.com/studio/publish/app-signing#generate-key).
+    Note that the `ANDROID_APP_BUNDLE_SIGNING_KEY` has to be in Java keystore format (*.jks) and base64 encoded. When a new key is created it is advisable to follow the  [Android key generation documentation](https://developer.android.com/studio/publish/app-signing#generate-key). You can download existing keys on Tabris connect from the user menu.
 
 2. Create a new file called `android-app-build.yaml` inside of the `.github/workflows/` directors.
 
