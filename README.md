@@ -34,7 +34,7 @@
    >   - Use the following command to convert your certificate to Base64 and copy it to your clipboard:
    >
    >     ```shell
-   >     base64 BUILD_CERTIFICATE.p12 | pbcopy
+   >     base64 -i BUILD_CERTIFICATE.p12 | pbcopy
    >     ```
    >
    > - The password for your Apple signing certificate.
@@ -50,7 +50,7 @@
    >   - Use the following command to convert your provisioning profile to Base64 and copy it to your clipboard:
    >
    >     ```shell
-   >     base64 PROVISIONING_PROFILE.mobileprovision | pbcopy
+   >     base64 -i PROVISIONING_PROFILE.mobileprovision | pbcopy
    >     ```
    >
    > - A keychain password.
