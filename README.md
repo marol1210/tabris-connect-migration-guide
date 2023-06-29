@@ -75,7 +75,7 @@
    - Base64 encoded **distribution** provisioning profile. Use name: `IOS_RELEASE_BUILD_PROVISION_PROFILE_BASE64`.
    - Any new random string that will be used as keychain password, use name: `IOS_KEYCHAIN_PASSWORD`. We used 32 character alphanumeric string generated with following command: ```pwgen 32 1```
 
-3. **Get your Tabris.js Build Key. Go to [Tabris Account Settings Page](https://build.tabris.com/settings/account) and copy build key visible below your username. Following steps in: [Creating encrypted secrets for a repository](Creating encrypted secrets for a repository), define a new repository secret called `TABRIS_BUILD_KEY`, as a secret paste in the build key you copied.**
+3. **Get your Tabris.js Build Key. Go to [Tabris Account Settings Page](https://build.tabris.com/settings/account) and copy build key visible below your username. Following steps in: [Creating encrypted secrets for a repository](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository), define a new repository secret called `TABRIS_BUILD_KEY`, as a secret paste in the build key you copied.**
 
 4. If your Tabris Connect build job had any secret environment variables configured, define them as repository secrets same as `TABRIS_BUILD_KEY`.
 
