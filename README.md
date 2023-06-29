@@ -121,6 +121,8 @@
    
    on:
      push:
+       branches:
+         - main
    
    jobs:
      build-ios:
