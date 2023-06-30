@@ -1,13 +1,8 @@
 # Tabris Connect to Github Actions migration guide
 
-
-
 ## Prerequisites:
 
-- Github repository with source code of the application that is built on Tabris Connect. You need an admin rights in order to configure secrets consumed by the build job.
-	
-	> Building applications which source code is hosted elsewhere is possible but out of the scope of this guide.
-
+- Github repository with source code of the application. Or you can fork this repository to have a pre-configured template.
 - Apple certificate (development or distribution) with corresponding iOS provisioning profile
   - `*.p12` file (incl passphrase if certificate was encrypted)
   - `*.mobileprovision` file
@@ -75,13 +70,9 @@
    - Base64 encoded **distribution** provisioning profile. Use name: `IOS_RELEASE_BUILD_PROVISION_PROFILE_BASE64`.
    - Any new random string that will be used as keychain password, use name: `IOS_KEYCHAIN_PASSWORD`. We used 32 character alphanumeric string generated with following command: ```pwgen 32 1```
 
-3. **Get your Tabris.js Build Key. Go to [Tabris Account Settings Page](https://build.tabris.com/settings/account) and copy build key visible below your username. Following steps in: [Creating encrypted secrets for a repository](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository), define a new repository secret called `TABRIS_BUILD_KEY`, as a secret paste in the build key you copied.**
+3. Create signing configuration file. In `./cordova` directory in your repo create `build.json` file.
 
-4. If your Tabris Connect build job had any secret environment variables configured, define them as repository secrets same as `TABRIS_BUILD_KEY`.
-
-5. Create signing configuration file. In `./cordova` directory in your repo create `build.json` file.
-
-6. Copy following contents into newly created file. Use yours provisioning profile identifiers.
+4. Copy following contents into newly created file. Use yours provisioning profile identifiers.
    Open your provisioning profile with any plain text editor, search for `UUID` key and use corresponding string value below the key.
 
    > Note: if you do not plan to build both: debug and release apps, you can define only one signing configuration.
@@ -103,33 +94,33 @@
    }
    ```
 
-7. In root directory of the repository with source code of the application, create following directories hierarchy `.github/workflows`.
+5. In root directory of the repository with source code of the application, create following directories hierarchy `.github/workflows`.
 
    ```shell
    mkdir -p .github/workflows
    ```
 
-8. Create a new file called `ios-app-build.yaml` inside of the newly created directory.
+6. Create a new file called `ios-app-build.yaml` inside of the newly created directory.
 
    ```shell
    touch .github/workflows/ios-app-build.yaml
    ```
 
-9. Copy following YAML contents into the created file
+7. Copy following YAML contents into the created file
    ```yaml
    name: Build iOS app
-   
+
    on:
      push:
        branches:
          - main
-   
+
    jobs:
      build-ios:
        runs-on: macos-latest
        name: Build iOS application
        steps:
-   
+
          - name: Install the Apple certificate and provisioning profile
            env:
              BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_DEVELOPMENT_BUILD_CERTIFICATE_BASE64 }}
@@ -141,43 +132,41 @@
              CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
              PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
              KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-   
+
              # import certificate and provisioning profile from secrets
              echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode --output $CERTIFICATE_PATH
              echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode --output $PP_PATH
-   
+
              # create temporary keychain
              security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
              security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
              security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-   
+
              # import certificate to keychain
              security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
              security list-keychain -d user -s $KEYCHAIN_PATH
-   
+
              # apply provisioning profile
              mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
              cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
-   
+
          - name: Checkout
            uses: actions/checkout@v3
            with:
              fetch-depth: 1
-   
+
          - name: Install tabris-cli
            run: npm install -g tabris-cli
-           
+
          - name: Install application dependencies
            run: |
            	npm run --if-present prepare
            	npm install
-   
+
          - name: Build application
-           env:
-             TABRIS_BUILD_KEY: ${{ secrets.TABRIS_BUILD_KEY }}
            run: |
              tabris build ios --debug --device --verbose
-   
+
          - name: Prepare artifacts for archival
            run: |
              mkdir -p artifacts
@@ -187,22 +176,22 @@
                "$(find . -iname "*.ipa")" \
                artifacts
              tar cf artifacts.tar artifacts
-   
+
          - name: Archive metadata
            uses: actions/upload-artifact@v3
            with:
              name: artifacts.tar
              path: artifacts.tar
              retention-days: 30
-   
+
          - name: Cleanup
            if: always()
            run: |
              security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
              rm ~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision
    ```
-   
-10. Commit changes and push to Github. Build should start automatically and you can observe its progress here:
+
+8. Commit changes and push to Github. Build should start automatically and you can observe its progress here:
 
     ```
     https://github.com/your-org/your-repository/actions
@@ -212,7 +201,7 @@
 
 ## Parameterized build (release or debug)
 
-You can have a parameterized job that can produce development or distrubition build, depending on input variable. This workflow has to be triggered manually on Github. Create another yaml file, named `ios-app-build-manual.yaml`. It will never be executed automatically, but you can trigger it from withing Githubs web UI manually. Use following build configuration:
+You can have a parameterized job that can produce development or distribution build, depending on input variable. This workflow has to be triggered manually on Github. Create another yaml file, named `ios-app-build-manual.yaml`. It will never be executed automatically, but you can trigger it from withing Githubs web UI manually. Use following build configuration:
 
 ```yaml
 name: Manual iOS app build
@@ -267,15 +256,13 @@ jobs:
 
       - name: Install tabris-cli
         run: npm install -g tabris-cli
-        
+
       - name: Install application dependencies
         run: |
         	npm run --if-present prepare
         	npm install
 
       - name: Build application
-        env:
-          TABRIS_BUILD_KEY: ${{ secrets.TABRIS_BUILD_KEY }}
         run: |
           tabris build ios --${{ github.event.inputs.build_type }} --device --verbose
 
@@ -321,7 +308,7 @@ This workflow has to be triggered manually on Github. Go to "Actions" tab, selec
       * `ANDROID_APP_BUNDLE_SIGNING_KEY` (base64 encoded)
       * `TABRIS_BUILD_KEY` (already created during the iOS setup step)
 
-    Note that the `ANDROID_APP_BUNDLE_SIGNING_KEY` has to be in Java keystore format (*.jks) and base64 encoded. When a new key is created it is advisable to follow the  [Android key generation documentation](https://developer.android.com/studio/publish/app-signing#generate-key). You can download existing keys on Tabris connect from the user menu.
+    Note that the `ANDROID_APP_BUNDLE_SIGNING_KEY` has to be in Java keystore format (*.jks) and base64 encoded. When a new key is created it is advisable to follow the  [Android key generation documentation](https://developer.android.com/studio/publish/app-signing#generate-key).
 
 2. Create a new file called `android-app-build.yaml` inside of the `.github/workflows/` directors.
 
@@ -363,11 +350,9 @@ This workflow has to be triggered manually on Github. Go to "Actions" tab, selec
           - name: Install application dependencies
             run: |
               npm run --if-present prepare
-              npm install            
+              npm install
 
           - name: Execute build
-            env:
-              TABRIS_BUILD_KEY: ${{ secrets.TABRIS_BUILD_KEY }}
             run: |
               tabris build --release android -- --packageType=bundle
 
