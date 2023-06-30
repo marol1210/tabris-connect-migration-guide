@@ -49,14 +49,12 @@ jobs:
           fetch-depth: 1
 
       - name: Install tabris-cli
-        run: npm install -g tabris-cli
-        
+        run: npm install -g https://github.com/eclipsesource/tabris-js-cli.git
+
       - name: Install application dependencies
         run: npm install
 
       - name: Build application
-        env:
-          TABRIS_BUILD_KEY: ${{ secrets.TABRIS_BUILD_KEY }}
         run: |
           tabris build ios --${{ github.event.inputs.build_type }} --device --verbose
 
