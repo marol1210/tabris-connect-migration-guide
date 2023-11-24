@@ -1,9 +1,7 @@
     name: Build Tabris.js app for Android
 
     on:
-      push:
-        branches:
-          - master
+      workflow_dispatch
 
     jobs:
       build_android_app:
